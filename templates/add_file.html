@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block javascript %}
+<script>
+    $('#upload').on('submit', function (event) {
+        event.preventDefault();
+        var files = document.getElementById('id_path').files;
+        if (files.length > 0) {
+            var file = files[0];
+            if (file.type !== 'application/pdf') {
+                $("#file_error").html("<p style='color:#FF0000'>Only PDF files are allowed</p>");
+                return;
+            }
+            var promise = getBase64(file);
+            promise.then(function (result) {
+                // upload_file(result);
+                upload_file({
+                    'name': file.name,
+                    'size': file.size,
+                    'f64': result
+                })
+            });
+        }
+    });
+    function upload_file(filedata) {
+        $.ajax({
+            url: "", // the endpoint
+            type: "POST", // http method
+            data: { csrfmiddlewaretoken: '{{ csrf_token}}', name: filedata.name, size: filedata.size, path: filedata.f64 }, // data sent with the post request
+
+            // handle a successful response
+            success: function (data) {
+                window.location = '/';
+            },
+
+            // handle a non-successful response
+            error: function (json) {
+                data = JSON.parse(json.responseText);
+                update_messages(data);
+            }
+        });
+    };
+
+    function getBase64(file, onLoadCallback) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () { resolve(reader.result); };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    function update_messages(message) {
+        $("#div_messages").html("");
+        $("#div_messages").append("<div class='alert alert-" + message.level + "''>" + message.text + "</div>");
+    };
+</script>
+{% endblock %}
+
+{% block content %}
+<h2 class=mt-3>File Upload Page</h2>
+<hr class="mt-0 mb-4">
+<div id="div_messages"></div>
+<form id="upload" method="post" enctype="multipart/form-data" class="jumbotron">
+    {% csrf_token %}
+    <span id="file_error"></span>
+    <label for="id_path">File:</label> <input type="file" name="path" required="" id="id_path">
+    <button id="submit" class="btn btn-primary btn-lg" type="submit">Upload</button>
+</form>
+{% endblock %}
